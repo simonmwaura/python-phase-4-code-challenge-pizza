@@ -1,3 +1,4 @@
+from __future__ import with_statement
 import logging
 from logging.config import fileConfig
 
@@ -36,19 +37,18 @@ def get_engine_url():
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-config.set_main_option('sqlalchemy.url', get_engine_url())
-target_db = current_app.extensions['migrate'].db
+config.set_main_option(
+    'sqlalchemy.url',
+    str(current_app.extensions['migrate'].db.get_engine().url).replace(
+        '%', '%%'))
+target_metadata = current_app.extensions['migrate'].db.metadata
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-
-def get_metadata():
-    if hasattr(target_db, 'metadatas'):
-        return target_db.metadatas[None]
-    return target_db.metadata
 
 
 def run_migrations_offline():
@@ -65,7 +65,7 @@ def run_migrations_offline():
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url, target_metadata=get_metadata(), literal_binds=True
+         url=url, target_metadata=target_metadata, literal_binds=True
     )
 
     with context.begin_transaction():
@@ -95,7 +95,7 @@ def run_migrations_online():
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=get_metadata(),
+            target_metadata=target_metadata,
             process_revision_directives=process_revision_directives,
             **current_app.extensions['migrate'].configure_args
         )
